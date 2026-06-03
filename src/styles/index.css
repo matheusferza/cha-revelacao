@@ -590,6 +590,19 @@ button {
   backdrop-filter: blur(16px);
 }
 
+.countdown-legend {
+  display: grid;
+  width: min(88vw, 920px);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 0.65rem;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: clamp(0.62rem, 1.3vw, 0.86rem);
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .mini-stat {
   display: flex;
   min-height: 74px;

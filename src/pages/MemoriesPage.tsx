@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion'
-import { useState } from 'react'
 import { StoryLayout } from '../components/StoryLayout'
-import { readMemories } from '../lib/memories'
+import { useSharedCollection } from '../hooks/useSharedCollection'
+import { MEMORY_STORAGE_KEY, starterMemories } from '../lib/memories'
 
 export function MemoriesPage() {
-  const [memories] = useState(() => readMemories())
+  const { items: memories } = useSharedCollection('memories', MEMORY_STORAGE_KEY, starterMemories)
 
   return (
     <StoryLayout

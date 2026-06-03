@@ -10,19 +10,23 @@ export function useCountdown(targetIso: string, enabled: boolean) {
 
   return useMemo(() => {
     const target = new Date(targetIso).getTime()
-    const remaining = enabled ? Math.max(0, target - now) : Math.max(0, target - now)
+    const remaining = Math.max(0, target - now)
     const totalSeconds = Math.ceil(remaining / 1000)
-    const minutes = Math.floor(totalSeconds / 60)
+    const days = Math.floor(totalSeconds / 86400)
+    const hours = Math.floor((totalSeconds % 86400) / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
     const seconds = totalSeconds % 60
 
     return {
+      days,
+      hours,
       minutes,
       seconds,
       totalSeconds,
       remaining,
       isFinalRush: enabled && totalSeconds <= 10,
       isComplete: totalSeconds <= 0,
-      label: `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
+      label: `${String(days).padStart(2, '0')}:${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
     }
   }, [enabled, now, targetIso])
 }

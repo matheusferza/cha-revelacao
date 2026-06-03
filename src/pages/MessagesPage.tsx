@@ -2,10 +2,11 @@ import { motion } from 'framer-motion'
 import { MessageCircleHeart, Send } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { StoryLayout } from '../components/StoryLayout'
-import { readMessages, saveMessages, type FamilyMessage } from '../lib/messages'
+import { useSharedCollection } from '../hooks/useSharedCollection'
+import { MESSAGE_STORAGE_KEY, type FamilyMessage } from '../lib/messages'
 
 export function MessagesPage() {
-  const [messages, setMessages] = useState<FamilyMessage[]>(() => readMessages())
+  const { items: messages, upsertItem } = useSharedCollection<FamilyMessage>('family_messages', MESSAGE_STORAGE_KEY)
   const [author, setAuthor] = useState('')
   const [text, setText] = useState('')
 
@@ -14,7 +15,7 @@ export function MessagesPage() {
     [messages],
   )
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const nextMessage = {
       id: crypto.randomUUID(),
@@ -25,9 +26,7 @@ export function MessagesPage() {
 
     if (!nextMessage.text) return
 
-    const nextMessages = [nextMessage, ...messages]
-    saveMessages(nextMessages)
-    setMessages(nextMessages)
+    await upsertItem(nextMessage)
     setAuthor('')
     setText('')
   }

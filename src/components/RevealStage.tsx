@@ -109,7 +109,7 @@ export function RevealStage({ settings, countdownLabel, isFinalRush, isRevealed 
               <motion.h1
                 className={clsx(
                   'font-black leading-none text-white drop-shadow-[0_0_38px_rgba(255,255,255,0.65)]',
-                  'text-[clamp(5rem,22vw,20rem)]',
+                  'text-[clamp(3rem,13vw,11rem)]',
                 )}
                 animate={{
                   scale: isFinalRush ? [1, 1.08, 1] : [1, 1.025, 1],
@@ -121,6 +121,12 @@ export function RevealStage({ settings, countdownLabel, isFinalRush, isRevealed 
               >
                 {countdownLabel}
               </motion.h1>
+              <div className="countdown-legend">
+                <span>Dias</span>
+                <span>Horas</span>
+                <span>Minutos</span>
+                <span>Segundos</span>
+              </div>
               <p className="mt-8 max-w-3xl text-base text-white/72 sm:text-xl">
                 {settings.countdownEnabled
                   ? 'Luzes suaves, corações acelerados e um segredo prestes a mudar tudo.'

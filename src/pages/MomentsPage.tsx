@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 import { Baby, HeartPulse, ScanHeart, Sparkles } from 'lucide-react'
-import { useState } from 'react'
 import { StoryLayout } from '../components/StoryLayout'
-import { readMoments, type MomentIcon } from '../lib/moments'
+import { useSharedCollection } from '../hooks/useSharedCollection'
+import { MOMENTS_STORAGE_KEY, starterMoments, type MomentIcon } from '../lib/moments'
 
 const iconMap = {
   ultrasound: ScanHeart,
@@ -12,7 +12,7 @@ const iconMap = {
 } satisfies Record<MomentIcon, typeof ScanHeart>
 
 export function MomentsPage() {
-  const [moments] = useState(() => readMoments())
+  const { items: moments } = useSharedCollection('moments', MOMENTS_STORAGE_KEY, starterMoments)
 
   return (
     <StoryLayout

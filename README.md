@@ -30,10 +30,14 @@ Sistema web premium para chá revelação com tela pública sincronizada em temp
 5. Publique as regras de `firestore.rules`.
 6. Copie `.env.example` para `.env` e preencha as credenciais do app web.
 
-Coleção usada:
+Coleções usadas:
 
 ```txt
 reveal_settings/main
+story_pages/{id}
+memories/{id}
+moments/{id}
+family_messages/{id}
 ```
 
 Campos principais:
@@ -90,3 +94,15 @@ firebase deploy
 ```
 
 Sem `.env`, o app entra em modo demo local para permitir testar a experiência visual antes da configuração Firebase.
+
+## Deploy na Vercel
+
+Cadastre na Vercel as variáveis de `.env.example` em **Settings > Environment Variables** para os ambientes **Production** e **Preview**. Depois, faça um novo deploy: as variáveis `VITE_*` são incorporadas durante o build.
+
+Publique também as regras do Firestore:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+Sem essas variáveis no deploy, publicações e configurações ficam apenas no `localStorage` do navegador atual. Nesse modo, domínios diferentes da Vercel não compartilham dados.

@@ -17,7 +17,7 @@ import {
   Music,
   Palette,
   Pause,
-  Pencil, // ← adicionar aqui
+  Pencil,
   Play,
   RefreshCcw,
   ScanHeart,
@@ -27,15 +27,16 @@ import {
   Trash2,
   Zap,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useCountdown } from '../hooks/useCountdown';
 import { useRevealSettings } from '../hooks/useRevealSettings';
+import { useSharedCollection } from '../hooks/useSharedCollection';
 import { auth } from '../lib/firebase';
-import { readMemories, saveMemories, type Memory } from '../lib/memories';
-import { readMessages, saveMessages, type FamilyMessage } from '../lib/messages';
-import { readMoments, saveMoments, type MomentIcon, type MomentItem } from '../lib/moments';
-import { readStoryPages, saveStoryPages, type StoryPage } from '../lib/storyPages';
+import { MEMORY_STORAGE_KEY, starterMemories, type Memory } from '../lib/memories';
+import { MESSAGE_STORAGE_KEY, type FamilyMessage } from '../lib/messages';
+import { MOMENTS_STORAGE_KEY, starterMoments, type MomentIcon, type MomentItem } from '../lib/moments';
+import { STORY_PAGES_STORAGE_KEY, starterStoryPages, type StoryPage } from '../lib/storyPages';
 import type { EffectIntensity, FinaleAnimation, Gender, VisualTheme } from '../types/reveal';
 
 
@@ -73,13 +74,12 @@ export function AdminPage() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [memories, setMemories] = useState<Memory[]>(() => readMemories());
-  const [messages, setMessages] = useState<FamilyMessage[]>(() => readMessages());
-  const [moments, setMoments] = useState<MomentItem[]>(() => readMoments());
-  const [storyPages, setStoryPages] = useState<StoryPage[]>(() => readStoryPages());
+  const { items: memories, removeItem: removeMemoryItem, upsertItem: upsertMemory } = useSharedCollection<Memory>('memories', MEMORY_STORAGE_KEY, starterMemories);
+  const { items: messages, removeItem: removeMessageItem } = useSharedCollection<FamilyMessage>('family_messages', MESSAGE_STORAGE_KEY);
+  const { items: moments, removeItem: removeMomentItem, upsertItem: upsertMoment } = useSharedCollection<MomentItem>('moments', MOMENTS_STORAGE_KEY, starterMoments);
+  const { items: storyPages, removeItem: removeStoryPageItem, upsertItem: upsertStoryPage } = useSharedCollection<StoryPage>('story_pages', STORY_PAGES_STORAGE_KEY, starterStoryPages);
   const [memoryTitle, setMemoryTitle] = useState('');
   const [memoryText, setMemoryText] = useState('');
-  const [memoryImage, setMemoryImage] = useState('');
   const [momentTitle, setMomentTitle] = useState('');
   const [momentText, setMomentText] = useState('');
   const [momentIcon, setMomentIcon] = useState<MomentIcon>('heart');
@@ -131,61 +131,43 @@ export function AdminPage() {
     }
   }
 
-  function handleMemoryImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setMemoryImage(String(reader.result));
-    reader.readAsDataURL(file);
-  }
-
-  function handleMemorySubmit(event: FormEvent) {
+  async function handleMemorySubmit(event: FormEvent) {
     event.preventDefault();
     if (!memoryTitle.trim() || !memoryText.trim()) return;
+    const id = crypto.randomUUID();
     const nextMemory = {
-      id: crypto.randomUUID(),
+      id,
       title: memoryTitle.trim(),
       text: memoryText.trim(),
-      image: memoryImage,
+      image: '',
       createdAt: new Date().toISOString(),
     };
-    const nextMemories = [nextMemory, ...memories];
-    saveMemories(nextMemories);
-    setMemories(nextMemories);
+    await upsertMemory(nextMemory);
     setMemoryTitle('');
     setMemoryText('');
-    setMemoryImage('');
   }
 
-  function removeMemory(id: string) {
-    const nextMemories = memories.filter((memory) => memory.id !== id);
-    saveMemories(nextMemories);
-    setMemories(nextMemories);
+  async function removeMemory(id: string) {
+    await removeMemoryItem(id);
   }
 
-  function removeMessage(id: string) {
-    const nextMessages = messages.filter((message) => message.id !== id);
-    saveMessages(nextMessages);
-    setMessages(nextMessages);
+  async function removeMessage(id: string) {
+    await removeMessageItem(id);
   }
 
-  function handleStoryPageSubmit(event: FormEvent) {
+  async function handleStoryPageSubmit(event: FormEvent) {
     event.preventDefault();
     if (!storyPageTitle.trim() || !storyPageBody.trim()) return;
 
     if (editingStoryPageId) {
-      const nextPages = storyPages.map((page) =>
-        page.id === editingStoryPageId
-          ? {
-              ...page,
-              title: storyPageTitle.trim(),
-              subtitle: storyPageSubtitle.trim() || 'Novo capítulo',
-              body: storyPageBody.trim(),
-            }
-          : page,
-      );
-      saveStoryPages(nextPages);
-      setStoryPages(nextPages);
+      const currentPage = storyPages.find((page) => page.id === editingStoryPageId);
+      if (!currentPage) return;
+      await upsertStoryPage({
+        ...currentPage,
+        title: storyPageTitle.trim(),
+        subtitle: storyPageSubtitle.trim() || 'Novo capítulo',
+        body: storyPageBody.trim(),
+      });
       setEditingStoryPageId(null);
       setStoryPageTitle('');
       setStoryPageSubtitle('');
@@ -200,9 +182,7 @@ export function AdminPage() {
       body: storyPageBody.trim(),
       createdAt: new Date().toISOString(),
     };
-    const nextPages = [...storyPages, nextPage];
-    saveStoryPages(nextPages);
-    setStoryPages(nextPages);
+    await upsertStoryPage(nextPage);
     setStoryPageTitle('');
     setStoryPageSubtitle('');
     setStoryPageBody('');
@@ -222,16 +202,14 @@ export function AdminPage() {
     setStoryPageBody('');
   }
 
-  function removeStoryPage(id: string) {
-    const nextPages = storyPages.filter((page) => page.id !== id);
-    saveStoryPages(nextPages);
-    setStoryPages(nextPages);
+  async function removeStoryPage(id: string) {
+    await removeStoryPageItem(id);
     if (editingStoryPageId === id) {
       cancelStoryPageEdit();
     }
   }
 
-  function handleMomentSubmit(event: FormEvent) {
+  async function handleMomentSubmit(event: FormEvent) {
     event.preventDefault();
     if (!momentTitle.trim() || !momentText.trim()) return;
     const nextMoment = {
@@ -240,18 +218,14 @@ export function AdminPage() {
       text: momentText.trim(),
       icon: momentIcon,
     };
-    const nextMoments = [nextMoment, ...moments];
-    saveMoments(nextMoments);
-    setMoments(nextMoments);
+    await upsertMoment(nextMoment);
     setMomentTitle('');
     setMomentText('');
     setMomentIcon('heart');
   }
 
-  function removeMoment(id: string) {
-    const nextMoments = moments.filter((moment) => moment.id !== id);
-    saveMoments(nextMoments);
-    setMoments(nextMoments);
+  async function removeMoment(id: string) {
+    await removeMomentItem(id);
   }
 
   if (!user) {
@@ -418,9 +392,7 @@ export function AdminPage() {
             <Route
               element={
                 <MemoriesAdmin
-                  image={memoryImage}
                   memories={memories}
-                  onImage={handleMemoryImage}
                   onRemove={removeMemory}
                   onSubmit={handleMemorySubmit}
                   setText={setMemoryText}
@@ -864,9 +836,7 @@ function HistoryAdmin({
 }
 
 type MemoriesAdminProps = {
-  image: string;
   memories: Memory[];
-  onImage: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemove: (id: string) => void;
   onSubmit: (event: FormEvent) => void;
   setText: (value: string) => void;
@@ -876,9 +846,7 @@ type MemoriesAdminProps = {
 };
 
 function MemoriesAdmin({
-  image,
   memories,
-  onImage,
   onRemove,
   onSubmit,
   setText,
@@ -917,17 +885,6 @@ function MemoriesAdmin({
               placeholder="Conte o que aconteceu nesse momento..."
             />
           </label>
-          <label className="field">
-            <span>Foto</span>
-            <input className="input" type="file" accept="image/*" onChange={onImage} />
-          </label>
-          {image && (
-            <img
-              className="aspect-video w-full rounded-xl object-cover"
-              src={image}
-              alt="Prévia da memória"
-            />
-          )}
           <button className="button-primary w-full" type="submit">
             <Camera size={18} /> Publicar memória
           </button>

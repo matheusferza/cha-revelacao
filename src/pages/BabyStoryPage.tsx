@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion'
 import { ArrowLeft, BookOpen, CalendarHeart, ChevronLeft, ChevronRight, Maximize2, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { ParticleField } from '../components/ParticleField'
 import { PublicNav } from '../components/PublicNav'
 import { useRevealSettings } from '../hooks/useRevealSettings'
-import { readStoryPages } from '../lib/storyPages'
+import { useSharedCollection } from '../hooks/useSharedCollection'
+import { STORY_PAGES_STORAGE_KEY, starterStoryPages } from '../lib/storyPages'
 
 function requestFullscreen() {
   if (!document.fullscreenElement) {
@@ -20,16 +21,21 @@ function requestFullscreen() {
 export function BabyStoryPage() {
   const { settings, loading } = useRevealSettings()
   const babyName = settings.babyName.trim() || 'nosso bebê'
-  const [storyPages] = useState(() => readStoryPages())
+  const { items: storedStoryPages } = useSharedCollection('story_pages', STORY_PAGES_STORAGE_KEY, starterStoryPages)
+  const storyPages = useMemo(
+    () => [...storedStoryPages].sort((firstPage, secondPage) => firstPage.createdAt.localeCompare(secondPage.createdAt)),
+    [storedStoryPages],
+  )
   const [pageIndex, setPageIndex] = useState(0)
-  const currentPage = storyPages[pageIndex]
+  const visiblePageIndex = Math.min(pageIndex, Math.max(0, storyPages.length - 1))
+  const currentPage = storyPages[visiblePageIndex]
 
   function previousPage() {
-    setPageIndex((current) => Math.max(0, current - 1))
+    setPageIndex(Math.max(0, visiblePageIndex - 1))
   }
 
   function nextPage() {
-    setPageIndex((current) => Math.min(storyPages.length - 1, current + 1))
+    setPageIndex(Math.min(storyPages.length - 1, visiblePageIndex + 1))
   }
 
   if (loading) {
@@ -89,7 +95,7 @@ export function BabyStoryPage() {
           <article className="book-page book-content-page">
             {currentPage ? (
               <>
-                <span className="book-page-number">Página {String(pageIndex + 1).padStart(2, '0')}</span>
+                <span className="book-page-number">Página {String(visiblePageIndex + 1).padStart(2, '0')}</span>
                 <h3>{currentPage.title}</h3>
                 <strong>{currentPage.subtitle}</strong>
                 <p>{currentPage.body}</p>
@@ -101,20 +107,20 @@ export function BabyStoryPage() {
         </motion.div>
 
         <div className="book-controls">
-          <button className="button-ghost" disabled={pageIndex === 0} onClick={previousPage}>
+          <button className="button-ghost" disabled={visiblePageIndex === 0} onClick={previousPage}>
             <ChevronLeft size={18} /> Anterior
           </button>
           <div className="book-dots">
             {storyPages.map((page, index) => (
               <button
                 aria-label={`Abrir página ${index + 1}`}
-                className={clsx(index === pageIndex && 'active')}
+                className={clsx(index === visiblePageIndex && 'active')}
                 key={page.id}
                 onClick={() => setPageIndex(index)}
               />
             ))}
           </div>
-          <button className="button-ghost" disabled={pageIndex >= storyPages.length - 1} onClick={nextPage}>
+          <button className="button-ghost" disabled={visiblePageIndex >= storyPages.length - 1} onClick={nextPage}>
             Próxima <ChevronRight size={18} />
           </button>
         </div>
